@@ -521,6 +521,10 @@ class V8_EXPORT HeapProfiler {
    */
   void StopTrackingHeapObjects();
 
+  void StartSamplingHeapProfiler();
+  void StopSamplingHeapProfiler();
+  void GetHeapSample(OutputStream* stream);
+
   /**
    * Deletes all snapshots taken. All previously returned pointers to
    * snapshots and their contents become invalid after this call.

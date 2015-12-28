@@ -5,9 +5,12 @@
 #include "src/profiler/heap-profiler.h"
 
 #include "src/api.h"
+#include "src/base/utils/random-number-generator.h"
 #include "src/debug/debug.h"
+#include "src/frames-inl.h"
 #include "src/profiler/allocation-tracker.h"
 #include "src/profiler/heap-snapshot-generator-inl.h"
+#include "src/profiler/sampling-heap-profiler.h"
 
 namespace v8 {
 namespace internal {
@@ -81,6 +84,26 @@ HeapSnapshot* HeapProfiler::TakeSnapshot(
       DebugFeatureTracker::kHeapSnapshot);
 
   return result;
+}
+
+
+void HeapProfiler::StartSamplingHeapProfiler() {
+  DCHECK(sampling_heap_profiler_.get() == nullptr);
+  sampling_heap_profiler_.Reset(new SamplingHeapProfiler(heap(), names_.get()));
+}
+
+
+void HeapProfiler::StopSamplingHeapProfiler() {
+  sampling_heap_profiler_.Reset(nullptr);
+}
+
+
+void HeapProfiler::GetHeapSample(OutputStream* stream) {
+  if (sampling_heap_profiler_.get()) {
+    sampling_heap_profiler_->GetHeapSample(stream);
+  } else {
+    stream->EndOfStream();
+  }
 }
 
 

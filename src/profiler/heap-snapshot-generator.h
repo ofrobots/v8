@@ -8,6 +8,7 @@
 #include "include/v8-profiler.h"
 #include "src/base/platform/time.h"
 #include "src/objects.h"
+#include "src/profiler/heap-profiler.h"
 #include "src/profiler/strings-storage.h"
 
 namespace v8 {
@@ -564,8 +565,6 @@ class HeapSnapshotGenerator : public SnapshottingProgressReportingInterface {
 
   DISALLOW_COPY_AND_ASSIGN(HeapSnapshotGenerator);
 };
-
-class OutputStreamWriter;
 
 class HeapSnapshotJSONSerializer {
  public:

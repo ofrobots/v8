@@ -8281,6 +8281,21 @@ SnapshotObjectId HeapProfiler::GetHeapStats(OutputStream* stream,
 }
 
 
+void HeapProfiler::StartSamplingHeapProfiler() {
+  reinterpret_cast<i::HeapProfiler*>(this)->StartSamplingHeapProfiler();
+}
+
+
+void HeapProfiler::StopSamplingHeapProfiler() {
+  reinterpret_cast<i::HeapProfiler*>(this)->StopSamplingHeapProfiler();
+}
+
+
+void HeapProfiler::GetHeapSample(OutputStream* stream) {
+  reinterpret_cast<i::HeapProfiler*>(this)->GetHeapSample(stream);
+}
+
+
 void HeapProfiler::DeleteAllHeapSnapshots() {
   reinterpret_cast<i::HeapProfiler*>(this)->DeleteAllSnapshots();
 }

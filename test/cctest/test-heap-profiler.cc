@@ -845,6 +845,19 @@ TEST(HeapSnapshotRootPreservedAfterSorting) {
 
 namespace {
 
+class OneByteResource : public v8::String::ExternalOneByteStringResource {
+ public:
+  explicit OneByteResource(i::Vector<char> string) : data_(string.start()) {
+    length_ = string.length();
+  }
+  virtual const char* data() const { return data_; }
+  virtual size_t length() const { return length_; }
+
+ private:
+  const char* data_;
+  size_t length_;
+};
+
 class TestJSONStream : public v8::OutputStream {
  public:
   TestJSONStream() : eos_signaled_(0), abort_countdown_(-1) {}
@@ -868,22 +881,36 @@ class TestJSONStream : public v8::OutputStream {
   int eos_signaled() { return eos_signaled_; }
   int size() { return buffer_.size(); }
 
+  // Verifies that the stream contains JSON, parses, and returns the parsed
+  // result.
+  v8::Local<v8::Object> verifyAndParseJSON(LocalContext& env) {
+    i::ScopedVector<char> json(size());
+    WriteTo(json);
+
+    // Verify that string is valid JSON.
+    OneByteResource* json_res = new OneByteResource(json);
+    v8::Local<v8::String> json_string =
+        v8::String::NewExternalOneByte(env->GetIsolate(), json_res)
+            .ToLocalChecked();
+    env->Global()
+        ->Set(env.local(), v8_str("json_snapshot"), json_string)
+        .FromJust();
+    v8::Local<v8::Value> snapshot_parse_result =
+        CompileRun("var parsed = JSON.parse(json_snapshot); true;");
+    CHECK(!snapshot_parse_result.IsEmpty());
+
+    v8::Local<v8::Object> parsed = env->Global()
+                                       ->Get(env.local(), v8_str("parsed"))
+                                       .ToLocalChecked()
+                                       ->ToObject(env.local())
+                                       .ToLocalChecked();
+    return parsed;
+  }
+
  private:
   i::Collector<char> buffer_;
   int eos_signaled_;
   int abort_countdown_;
-};
-
-class OneByteResource : public v8::String::ExternalOneByteStringResource {
- public:
-  explicit OneByteResource(i::Vector<char> string) : data_(string.start()) {
-    length_ = string.length();
-  }
-  virtual const char* data() const { return data_; }
-  virtual size_t length() const { return length_; }
- private:
-  const char* data_;
-  size_t length_;
 };
 
 }  // namespace
@@ -908,28 +935,8 @@ TEST(HeapSnapshotJSONSerialization) {
   snapshot->Serialize(&stream, v8::HeapSnapshot::kJSON);
   CHECK_GT(stream.size(), 0);
   CHECK_EQ(1, stream.eos_signaled());
-  i::ScopedVector<char> json(stream.size());
-  stream.WriteTo(json);
 
-  // Verify that snapshot string is valid JSON.
-  OneByteResource* json_res = new OneByteResource(json);
-  v8::Local<v8::String> json_string =
-      v8::String::NewExternalOneByte(env->GetIsolate(), json_res)
-          .ToLocalChecked();
-  env->Global()
-      ->Set(env.local(), v8_str("json_snapshot"), json_string)
-      .FromJust();
-  v8::Local<v8::Value> snapshot_parse_result = CompileRun(
-      "var parsed = JSON.parse(json_snapshot); true;");
-  CHECK(!snapshot_parse_result.IsEmpty());
-
-  // Verify that snapshot object has required fields.
-  v8::Local<v8::Object> parsed_snapshot =
-      env->Global()
-          ->Get(env.local(), v8_str("parsed"))
-          .ToLocalChecked()
-          ->ToObject(env.local())
-          .ToLocalChecked();
+  v8::Local<v8::Object> parsed_snapshot = stream.verifyAndParseJSON(env);
   CHECK(parsed_snapshot->Has(env.local(), v8_str("snapshot")).FromJust());
   CHECK(parsed_snapshot->Has(env.local(), v8_str("nodes")).FromJust());
   CHECK(parsed_snapshot->Has(env.local(), v8_str("edges")).FromJust());
@@ -2851,4 +2858,53 @@ TEST(AddressToTraceMap) {
   map.Clear();
   CHECK_EQ(0u, map.size());
   CHECK_EQ(0u, map.GetTraceNodeId(ToAddress(0x400)));
+}
+
+
+TEST(SamplingHeapProfiler) {
+  v8::HandleScope scope(v8::Isolate::GetCurrent());
+  LocalContext env;
+  v8::HeapProfiler* heap_profiler = env->GetIsolate()->GetHeapProfiler();
+
+  // GetHeapSample should return an empty stream when called before starting
+  // the sampling heap profiler.
+  TestJSONStream stream0;
+  heap_profiler->GetHeapSample(&stream0);
+  CHECK_EQ(stream0.size(), 0);
+  CHECK_EQ(1, stream0.eos_signaled());
+
+  heap_profiler->StartSamplingHeapProfiler();
+  CompileRun(
+      "var A = [];\n"
+      "function bar(size) { return new Array(size); }"
+      "function foo() {\n"
+      "  for (var i = 0; i < 1024; ++i) {\n"
+      "    A[i] = bar(1024);\n"
+      "  }\n"
+      "}\n"
+      "foo();");
+
+  TestJSONStream stream1;
+  heap_profiler->GetHeapSample(&stream1);
+  heap_profiler->StopSamplingHeapProfiler();
+
+  CHECK_GT(stream1.size(), 0);
+  CHECK_EQ(1, stream1.eos_signaled());
+
+  v8::Local<v8::Object> sample = stream1.verifyAndParseJSON(env);
+  CHECK(sample->IsArray());
+  v8::Local<v8::Value> validation_result = CompileRun(
+      "parsed.every(allocation => {\n"
+      "    return allocation.size && Array.isArray(allocation.stack) &&\n"
+      "           allocation.stack.every(frame => {\n"
+      "               return frame.name && frame.scriptName;\n"
+      "           });\n"
+      "});");
+  CHECK(validation_result->IsTrue());
+
+  // Samples are reset once sampling heap profiler is stopped.
+  TestJSONStream stream2;
+  heap_profiler->GetHeapSample(&stream2);
+  CHECK_EQ(stream2.size(), 0);
+  CHECK_EQ(1, stream2.eos_signaled());
 }

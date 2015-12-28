@@ -2577,7 +2577,21 @@ class InlineAllocationObserver {
   }
   virtual ~InlineAllocationObserver() {}
 
- private:
+  // Called each time the new space does an inline allocation step. This may be
+  // more frequently than the step_size we are monitoring (e.g. when there are
+  // multiple observers, or when page or space boundary is encountered.)
+  void InlineAllocationStep(int bytes_allocated, Address soon_object,
+                            size_t size) {
+    bytes_to_next_step_ -= bytes_allocated;
+    if (bytes_to_next_step_ <= 0) {
+      Step(static_cast<int>(step_size_ - bytes_to_next_step_), soon_object,
+           size);
+      step_size_ = GetNextStepSize();
+      bytes_to_next_step_ = step_size_;
+    }
+  }
+
+ protected:
   intptr_t step_size() const { return step_size_; }
   intptr_t bytes_to_next_step() const { return bytes_to_next_step_; }
 
@@ -2595,24 +2609,14 @@ class InlineAllocationObserver {
   //    first object.
   virtual void Step(int bytes_allocated, Address soon_object, size_t size) = 0;
 
-  // Called each time the new space does an inline allocation step. This may be
-  // more frequently than the step_size we are monitoring (e.g. when there are
-  // multiple observers, or when page or space boundary is encountered.)
-  void InlineAllocationStep(int bytes_allocated, Address soon_object,
-                            size_t size) {
-    bytes_to_next_step_ -= bytes_allocated;
-    if (bytes_to_next_step_ <= 0) {
-      Step(static_cast<int>(step_size_ - bytes_to_next_step_), soon_object,
-           size);
-      bytes_to_next_step_ = step_size_;
-    }
-  }
+  // Subclasses can override this method to make step size dynamic.
+  virtual intptr_t GetNextStepSize() { return step_size_; }
 
   intptr_t step_size_;
   intptr_t bytes_to_next_step_;
 
+ private:
   friend class NewSpace;
-
   DISALLOW_COPY_AND_ASSIGN(InlineAllocationObserver);
 };
 
