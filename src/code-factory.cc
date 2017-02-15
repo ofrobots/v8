@@ -23,8 +23,9 @@ Callable make_callable(Stub& stub) {
 
 // static
 Handle<Code> CodeFactory::RuntimeCEntry(Isolate* isolate, int result_size) {
-  CEntryStub stub(isolate, result_size);
-  return stub.GetCode();
+  // CEntryStub stub(isolate, result_size);
+  // return stub.GetCode();
+  return isolate->builtins()->CEntryStub();
 }
 
 // static

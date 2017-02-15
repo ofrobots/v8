@@ -129,6 +129,7 @@ class Isolate;
   /* Apply and entries */                                                      \
   ASM(Apply)                                                                   \
   ASM(JSEntryTrampoline)                                                       \
+  TFJ(CEntryStub, -1)                                                          \
   ASM(JSConstructEntryTrampoline)                                              \
   ASM(ResumeGeneratorTrampoline)                                               \
                                                                                \

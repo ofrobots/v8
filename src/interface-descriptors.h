@@ -103,6 +103,7 @@ class PlatformInterfaceDescriptor;
   V(InterpreterPushArgsAndConstruct)      \
   V(InterpreterPushArgsAndConstructArray) \
   V(InterpreterCEntry)                    \
+  V(CEntryStub)                           \
   V(ResumeGenerator)                      \
   V(FrameDropperTrampoline)               \
   V(PromiseHandleReject)
@@ -950,6 +951,13 @@ class InterpreterCEntryDescriptor : public CallInterfaceDescriptor {
  public:
   DEFINE_PARAMETERS(kNumberOfArguments, kFirstArgument, kFunctionEntry)
   DECLARE_DESCRIPTOR_WITH_CUSTOM_FUNCTION_TYPE(InterpreterCEntryDescriptor,
+                                               CallInterfaceDescriptor)
+};
+
+class CEntryStubDescriptor : public CallInterfaceDescriptor {
+ public:
+  DEFINE_PARAMETERS(kNumberOfArguments)
+  DECLARE_DESCRIPTOR_WITH_CUSTOM_FUNCTION_TYPE(CEntryStubDescriptor,
                                                CallInterfaceDescriptor)
 };
 

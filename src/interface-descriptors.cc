@@ -626,6 +626,19 @@ void InterpreterCEntryDescriptor::InitializePlatformIndependent(
                                       machine_types);
 }
 
+void CEntryStubDescriptor::InitializePlatformIndependent(
+    CallInterfaceDescriptorData* data) {
+  // kNumberOfArguments
+  MachineType machine_types[] = {MachineType::Int32()};
+  data->InitializePlatformIndependent(arraysize(machine_types), 0,
+                                      machine_types);
+}
+
+void CEntryStubDescriptor::InitializePlatformSpecific(
+    CallInterfaceDescriptorData* data) {
+  DefaultInitializePlatformSpecific(data, kParameterCount);
+}
+
 void FrameDropperTrampolineDescriptor::InitializePlatformIndependent(
     CallInterfaceDescriptorData* data) {
   // New FP value.

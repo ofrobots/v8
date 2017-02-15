@@ -141,6 +141,30 @@ void Builtins::Generate_GrowFastSmiOrObjectElements(
   assembler.TailCallRuntime(Runtime::kGrowArrayElements, context, object, key);
 }
 
+void Builtins::Generate_CEntryStub(
+    compiler::CodeAssemblerState* state) {
+  typedef compiler::Node Node;
+  CodeStubAssembler assembler(state);
+
+  // Node* argc = assembler.Parameter(BuiltinDescriptor::kArgumentsCount);
+  Node* context = assembler.Parameter(BuiltinDescriptor::kContext);
+  // Node* new_target = assembler.Parameter(BuiltinDescriptor::kNewTarget);
+
+  // CodeStubArguments args(&assembler, assembler.ChangeInt32ToIntPtr(argc));
+  // CodeStubArguments lets you iterate arguments in the stub, how do I generate a call (such as CallStubN below)
+  // dynamically depending on the number of arguments iterated over by the CodeStubArguments?
+  class CEntryStub stub(assembler.isolate(), 1); // don't hardcode result size
+  Callable call(stub.GetCode(), CEntryStubDescriptor(assembler.isolate()));
+  // Node** nodes = assembler.zone()->NewArray<Node*>(argc + 2);
+  // int index = 0;
+  // nodes[index++] = new_target;
+  // for (int i = 0; i < argc; i++) {
+  //   nodes[index++] = args.AtIndex(i);
+  // }
+  // nodes[index++] = context;
+  assembler.Return(assembler.CallStub(call, context, assembler.Parameter(0), assembler.Parameter(1), assembler.Parameter(2)));
+}
+
 namespace {
 
 void Generate_NewArgumentsElements(CodeStubAssembler* assembler,
