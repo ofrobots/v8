@@ -56,6 +56,7 @@ class Isolate;
                                                                                \
   /* Declared first for dependency reasons */                                  \
   ASM(CompileLazy)                                                             \
+  TFJ(CEntryStub, -1)                                                          \
   TFS(ToObject, BUILTIN, kNoExtraICState, TypeConversion, 1)                   \
   TFS(FastNewObject, BUILTIN, kNoExtraICState, FastNewObject, 1)               \
   TFS(HasProperty, BUILTIN, kNoExtraICState, HasProperty, 1)                   \
@@ -129,7 +130,6 @@ class Isolate;
   /* Apply and entries */                                                      \
   ASM(Apply)                                                                   \
   ASM(JSEntryTrampoline)                                                       \
-  TFJ(CEntryStub, -1)                                                          \
   ASM(JSConstructEntryTrampoline)                                              \
   ASM(ResumeGeneratorTrampoline)                                               \
                                                                                \
